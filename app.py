@@ -122,20 +122,10 @@ def extract_facebook_metrics(url):
 
 def extract_shortcode(url):
 
-    patterns = [
-        r"instagram\.com/reel/([^/?]+)",
-        r"instagram\.com/p/([^/?]+)",
-        r"instagram\.com/tv/([^/?]+)"
-    ]
-
-    for pattern in patterns:
-
-        match = re.search(pattern, url)
-
-        if match:
-            return match.group(1)
-
-    return None
+    shortcode = url.strip("/").split("/")[-1]
+    if len(shortcode) == 0:
+        return None
+    return shortcode
 
 
 def extract_instagram_metrics(url):
