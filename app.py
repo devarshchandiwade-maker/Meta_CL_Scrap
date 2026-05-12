@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 
 import time
 import instaloader
@@ -62,8 +63,20 @@ def create_driver(headless=True):
 # ======================================================
 # FACEBOOK
 # ======================================================
+def normalize_facebook_url(url):
+
+    reel_match = re.search(r"/reel/(\d+)", url)
+
+    if reel_match:
+        video_id = reel_match.group(1)
+        return f"https://www.facebook.com/watch/?v={video_id}"
+
+    return url
+
 
 def extract_facebook_metrics(url):
+
+    url = normalize_facebook_url(url)
 
     driver = create_driver(headless=True)
 
@@ -71,38 +84,69 @@ def extract_facebook_metrics(url):
 
         driver.get(url)
 
-        time.sleep(6)
+        time.sleep(8)
 
-        body_text = driver.find_element(By.TAG_NAME, "body").text.lower()
-
-        words = body_text.split()
+        body_text = driver.find_element(By.TAG_NAME, "body").text
+        text = body_text.lower()
 
         likes = "Not Found"
         comments = "Not Found"
+        shares = "Not Found"
+        views = "Not Found"
 
-        if "public" in words:
+        # Better regex patterns
+        like_patterns = [
+            r'([\d\.,]+[kmb]?)\s+likes?',
+            r'([\d\.,]+[kmb]?)\s+reactions?'
+        ]
 
-            idx = words.index("public")
+        comment_patterns = [
+            r'([\d\.,]+[kmb]?)\s+comments?'
+        ]
 
-            next_values = words[idx + 1: idx + 15]
+        share_patterns = [
+            r'([\d\.,]+[kmb]?)\s+shares?'
+        ]
 
-            numbers = []
+        view_patterns = [
+            r'([\d\.,]+[kmb]?)\s+views?'
+        ]
 
-            for word in next_values:
+        # Find likes
+        for pattern in like_patterns:
+            match = re.search(pattern, text)
+            if match:
+                likes = match.group(1)
+                break
 
-                if re.match(r"^\d+(\.\d+)?[km]?$", word):
-                    numbers.append(word)
+        # Find comments
+        for pattern in comment_patterns:
+            match = re.search(pattern, text)
+            if match:
+                comments = match.group(1)
+                break
 
-            if len(numbers) > 0:
-                likes = numbers[0]
+        # Find shares
+        for pattern in share_patterns:
+            match = re.search(pattern, text)
+            if match:
+                shares = match.group(1)
+                break
 
-            if len(numbers) > 1:
-                comments = numbers[1]
+        # Find views
+        for pattern in view_patterns:
+            match = re.search(pattern, text)
+            if match:
+                views = match.group(1)
+                break
 
         return {
             "platform": "facebook",
+            "url": url,
             "likes": likes,
-            "comments": comments
+            "comments": comments,
+            "shares": shares,
+            "views": views
         }
 
     except Exception as e:
@@ -114,8 +158,7 @@ def extract_facebook_metrics(url):
 
     finally:
         driver.quit()
-
-
+        
 # ======================================================
 # INSTAGRAM
 # ======================================================
