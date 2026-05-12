@@ -3,11 +3,11 @@ from flask import Flask, request, jsonify
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 
 import time
 import re
@@ -31,12 +31,15 @@ def create_driver(headless=True):
     if headless:
         options.add_argument("--headless=new")
 
-    options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+
     options.add_argument("--window-size=1920,1080")
 
     options.add_argument("--disable-blink-features=AutomationControlled")
+
+    options.add_argument("--remote-debugging-port=9222")
 
     options.add_argument(
         "user-agent=Mozilla/5.0 "
@@ -46,16 +49,12 @@ def create_driver(headless=True):
         "Chrome/124.0.0.0 Safari/537.36"
     )
 
-    service = Service(ChromeDriverManager().install())
+    # IMPORTANT FOR RAILWAY
+    options.binary_location = "/usr/bin/google-chrome"
 
-    driver = webdriver.Chrome(
-        service=service,
-        options=options
-    )
+    driver = webdriver.Chrome(options=options)
 
     return driver
-
-
 # ======================================================
 # FACEBOOK
 # ======================================================
