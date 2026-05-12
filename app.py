@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 import time
+import instaloader
 import re
 
 
@@ -119,59 +120,53 @@ def extract_facebook_metrics(url):
 # INSTAGRAM
 # ======================================================
 
-def extract_instagram_metrics(url):
+def extract_shortcode(url):
 
-    driver = create_driver(headless=True)
+    patterns = [
+        r"instagram\.com/reel/([^/?]+)",
+        r"instagram\.com/p/([^/?]+)",
+        r"instagram\.com/tv/([^/?]+)"
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(pattern, url)
+
+        if match:
+            return match.group(1)
+
+    return None
+
+
+def extract_instagram_metrics(url):
 
     try:
 
-        driver.get(url)
+        shortcode = extract_shortcode(url)
 
-        wait = WebDriverWait(driver, 20)
+        if not shortcode:
 
-        wait.until(
-            EC.presence_of_all_elements_located(
-                (By.CLASS_NAME, "xe9ewy2")
-            )
+            return {
+                "platform": "instagram",
+                "error": "Invalid Instagram URL"
+            }
+
+        # INIT INSTALOADER
+        L = instaloader.Instaloader()
+
+        # GET POST
+        post = instaloader.Post.from_shortcode(
+            L.context,
+            shortcode
         )
-
-        time.sleep(3)
-
-        elements = driver.find_elements(By.CLASS_NAME, "xe9ewy2")
-
-        values = []
-
-        for el in elements:
-
-            text = el.text.strip()
-
-            if text:
-                values.append(text)
-
-        likes = values[0] if len(values) > 0 else "Not Found"
-        comments = values[1] if len(values) > 1 else "Not Found"
-
-        # DATE
-
-        try:
-
-            time_element = driver.find_element(By.TAG_NAME, "time")
-
-            post_date = time_element.text.strip()
-
-            datetime_value = time_element.get_attribute("datetime")
-
-        except Exception:
-
-            post_date = "Not Found"
-            datetime_value = "Not Found"
 
         return {
             "platform": "instagram",
-            "likes": likes,
-            "comments": comments,
-            "post_date": post_date,
-            "datetime": datetime_value
+            "shortcode": shortcode,
+            "views": post.video_view_count,
+            "likes": post.likes,
+            "comments": post.comments,
+            "caption": post.caption
         }
 
     except Exception as e:
@@ -180,10 +175,6 @@ def extract_instagram_metrics(url):
             "platform": "instagram",
             "error": str(e)
         }
-
-    finally:
-        driver.quit()
-
 
 # ======================================================
 # AUTO DETECT
