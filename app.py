@@ -166,7 +166,8 @@ def extract_instagram_metrics(url):
             "views": post.video_view_count,
             "likes": post.likes,
             "comments": post.comments,
-            "caption": post.caption
+            "caption": post.caption,
+            "date": post.date
         }
 
     except Exception as e:
