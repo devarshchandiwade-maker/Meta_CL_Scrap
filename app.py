@@ -1,3 +1,5 @@
+from flask import Flask, request, jsonify
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -11,11 +13,19 @@ import time
 import re
 
 
-# ==========================================
+# ======================================================
+# FLASK APP
+# ======================================================
+
+app = Flask(__name__)
+
+
+# ======================================================
 # CREATE DRIVER
-# ==========================================
+# ======================================================
 
 def create_driver(headless=True):
+
     options = Options()
 
     if headless:
@@ -23,24 +33,39 @@ def create_driver(headless=True):
 
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
+
     options.add_argument("--disable-blink-features=AutomationControlled")
+
+    options.add_argument(
+        "user-agent=Mozilla/5.0 "
+        "(Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 "
+        "(KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    )
 
     service = Service(ChromeDriverManager().install())
 
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(
+        service=service,
+        options=options
+    )
 
     return driver
 
 
-# ==========================================
-# FACEBOOK SCRAPER
-# ==========================================
+# ======================================================
+# FACEBOOK
+# ======================================================
 
 def extract_facebook_metrics(url):
+
     driver = create_driver(headless=True)
 
     try:
+
         driver.get(url)
 
         time.sleep(6)
@@ -53,6 +78,7 @@ def extract_facebook_metrics(url):
         comments = "Not Found"
 
         if "public" in words:
+
             idx = words.index("public")
 
             next_values = words[idx + 1: idx + 15]
@@ -71,14 +97,15 @@ def extract_facebook_metrics(url):
                 comments = numbers[1]
 
         return {
-            "platform": "Facebook",
+            "platform": "facebook",
             "likes": likes,
             "comments": comments
         }
 
     except Exception as e:
+
         return {
-            "platform": "Facebook",
+            "platform": "facebook",
             "error": str(e)
         }
 
@@ -86,14 +113,16 @@ def extract_facebook_metrics(url):
         driver.quit()
 
 
-# ==========================================
-# INSTAGRAM SCRAPER
-# ==========================================
+# ======================================================
+# INSTAGRAM
+# ======================================================
 
 def extract_instagram_metrics(url):
-    driver = create_driver(headless=False)
+
+    driver = create_driver(headless=True)
 
     try:
+
         driver.get(url)
 
         wait = WebDriverWait(driver, 20)
@@ -111,6 +140,7 @@ def extract_instagram_metrics(url):
         values = []
 
         for el in elements:
+
             text = el.text.strip()
 
             if text:
@@ -119,11 +149,10 @@ def extract_instagram_metrics(url):
         likes = values[0] if len(values) > 0 else "Not Found"
         comments = values[1] if len(values) > 1 else "Not Found"
 
-        # =========================
-        # POST DATE
-        # =========================
+        # DATE
 
         try:
+
             time_element = driver.find_element(By.TAG_NAME, "time")
 
             post_date = time_element.text.strip()
@@ -131,11 +160,12 @@ def extract_instagram_metrics(url):
             datetime_value = time_element.get_attribute("datetime")
 
         except Exception:
+
             post_date = "Not Found"
             datetime_value = "Not Found"
 
         return {
-            "platform": "Instagram",
+            "platform": "instagram",
             "likes": likes,
             "comments": comments,
             "post_date": post_date,
@@ -143,8 +173,9 @@ def extract_instagram_metrics(url):
         }
 
     except Exception as e:
+
         return {
-            "platform": "Instagram",
+            "platform": "instagram",
             "error": str(e)
         }
 
@@ -152,9 +183,9 @@ def extract_instagram_metrics(url):
         driver.quit()
 
 
-# ==========================================
-# AUTO DETECT PLATFORM
-# ==========================================
+# ======================================================
+# AUTO DETECT
+# ======================================================
 
 def scrape_social_media(url):
 
@@ -170,25 +201,46 @@ def scrape_social_media(url):
         }
 
 
-# ==========================================
-# MAIN
-# ==========================================
+# ======================================================
+# HOME ROUTE
+# ======================================================
+
+@app.route("/")
+def home():
+
+    return jsonify({
+        "status": "running",
+        "message": "Meta Scraper API"
+    })
+
+
+# ======================================================
+# SCRAPE ROUTE
+# ======================================================
+
+@app.route("/scrape")
+def scrape():
+
+    url = request.args.get("url")
+
+    if not url:
+
+        return jsonify({
+            "error": "Missing URL parameter"
+        })
+
+    result = scrape_social_media(url)
+
+    return jsonify(result)
+
+
+# ======================================================
+# RUN
+# ======================================================
 
 if __name__ == "__main__":
 
-    urls = [
-        "https://www.facebook.com/reel/950529911097356",
-        "https://www.instagram.com/reel/DXBB07DjAtr/"
-    ]
-
-    for url in urls:
-
-        print("\n====================================")
-        print("URL:", url)
-
-        result = scrape_social_media(url)
-
-        for key, value in result.items():
-            print(f"{key.capitalize():12}: {value}")
-
-        print("====================================")
+    app.run(
+        host="0.0.0.0",
+        port=5000
+    )
