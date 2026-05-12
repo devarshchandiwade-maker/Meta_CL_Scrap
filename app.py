@@ -92,17 +92,47 @@ def parse_facebook_text(text):
     # CAPTION
     # ====================================
 
+        
+    duration_index = None
+
     for i, line in enumerate(lines):
 
-        if "reels" in line.lower() or "facebook" in line.lower():
+        # Detect reel duration
+        if re.match(r"\d+:\d+\s*/\s*\d+:\d+", line):
 
-            if i + 1 < len(lines):
+            duration_index = i
+            break
 
-                next_line = lines[i + 1]
+    if duration_index is not None:
 
-                if len(next_line) > 5:
-                    data["caption"] = next_line
-                    break
+        for j in range(duration_index + 1, len(lines)):
+
+            candidate = lines[j].strip()
+
+            # Skip useless UI words
+            skip_words = [
+                "like",
+                "comment",
+                "share",
+                "facebook",
+                "reels",
+                "explore",
+                "watch more",
+                "log in",
+                "create new account"
+            ]
+
+            if candidate.lower() in skip_words:
+                continue
+
+            # Skip pure numbers
+            if re.match(r"^[\d.,KkMm]+$", candidate):
+                continue
+
+            # First meaningful text becomes caption
+            if len(candidate) > 10:
+                data["caption"] = candidate
+                break
 
     # ====================================
     # LIKES COMMENTS VIEWS
