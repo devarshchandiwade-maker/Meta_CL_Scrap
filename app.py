@@ -7,8 +7,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from webdriver_manager.chrome import ChromeDriverManager
-
 import time
 import re
 
@@ -34,7 +32,6 @@ def create_driver(headless=True):
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-
     options.add_argument("--window-size=1920,1080")
 
     options.add_argument("--disable-blink-features=AutomationControlled")
@@ -49,13 +46,18 @@ def create_driver(headless=True):
         "Chrome/124.0.0.0 Safari/537.36"
     )
 
-    # IMPORTANT FOR RAILWAY
-    options.binary_location = "/usr/bin/google-chrome"
+    # IMPORTANT
+    options.binary_location = "/usr/bin/chromium"
 
-    driver = webdriver.Chrome(options=options)
+    # USE INSTALLED DRIVER
+    service = Service("/usr/bin/chromedriver")
+
+    driver = webdriver.Chrome(
+        service=service,
+        options=options
+    )
 
     return driver
-
 # ======================================================
 # FACEBOOK
 # ======================================================

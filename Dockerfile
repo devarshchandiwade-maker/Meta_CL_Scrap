@@ -1,13 +1,12 @@
 FROM python:3.10-slim
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
+    chromium \
+    chromium-driver \
     wget \
     curl \
     unzip \
     gnupg \
-    chromium \
-    chromium-driver \
     gcc \
     pkg-config \
     libcairo2-dev \
@@ -23,6 +22,6 @@ COPY . .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 10000
+EXPOSE 8080
 
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080"]
