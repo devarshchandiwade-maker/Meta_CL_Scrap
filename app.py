@@ -63,15 +63,107 @@ def create_driver(headless=True):
 # ======================================================
 # FACEBOOK
 # ======================================================
+
 def normalize_facebook_url(url):
 
     reel_match = re.search(r"/reel/(\d+)", url)
 
     if reel_match:
         video_id = reel_match.group(1)
-        return f"https://www.facebook.com/watch/?v={video_id}"
+        return f"https://m.facebook.com/watch/?v={video_id}"
 
     return url
+
+
+def parse_facebook_text(text):
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+
+    data = {
+        "caption": None,
+        "likes": None,
+        "comments": None,
+        "views": None,
+        "date": None,
+        "shares": None
+    }
+
+    # ====================================
+    # CAPTION
+    # ====================================
+
+    for i, line in enumerate(lines):
+
+        if "reels" in line.lower() or "facebook" in line.lower():
+
+            if i + 1 < len(lines):
+
+                next_line = lines[i + 1]
+
+                if len(next_line) > 5:
+                    data["caption"] = next_line
+                    break
+
+    # ====================================
+    # LIKES COMMENTS VIEWS
+    # ====================================
+
+    for i, line in enumerate(lines):
+
+        if re.match(r"^[\d.,KkMm]+$", line):
+
+            nearby = " ".join(lines[i:i+8]).lower()
+
+            if "comments" in nearby or "views" in nearby:
+
+                data["likes"] = line
+
+                comments_match = re.search(
+                    r'([\d.,KkMm]+)\s+comments',
+                    nearby
+                )
+
+                views_match = re.search(
+                    r'([\d.,KkMm]+)\s+views',
+                    nearby
+                )
+
+                shares_match = re.search(
+                    r'([\d.,KkMm]+)\s+shares',
+                    nearby
+                )
+
+                if comments_match:
+                    data["comments"] = comments_match.group(1)
+
+                if views_match:
+                    data["views"] = views_match.group(1)
+
+                if shares_match:
+                    data["shares"] = shares_match.group(1)
+
+                break
+
+    # ====================================
+    # DATE
+    # ====================================
+
+    date_patterns = [
+        r'\d{1,2}\s+[A-Za-z]+\s+at\s+\d{1,2}:\d{2}',
+        r'[A-Za-z]+\s+\d{1,2}\s+at\s+\d{1,2}:\d{2}',
+    ]
+
+    for line in lines:
+
+        for pattern in date_patterns:
+
+            match = re.search(pattern, line)
+
+            if match:
+                data["date"] = match.group(0)
+                return data
+
+    return data
 
 
 def extract_facebook_metrics(url):
@@ -87,66 +179,18 @@ def extract_facebook_metrics(url):
         time.sleep(8)
 
         body_text = driver.find_element(By.TAG_NAME, "body").text
-        text = body_text.lower()
 
-        likes = "Not Found"
-        comments = "Not Found"
-        shares = "Not Found"
-        views = "Not Found"
-
-        # Better regex patterns
-        like_patterns = [
-            r'([\d\.,]+[kmb]?)\s+likes?',
-            r'([\d\.,]+[kmb]?)\s+reactions?'
-        ]
-
-        comment_patterns = [
-            r'([\d\.,]+[kmb]?)\s+comments?'
-        ]
-
-        share_patterns = [
-            r'([\d\.,]+[kmb]?)\s+shares?'
-        ]
-
-        view_patterns = [
-            r'([\d\.,]+[kmb]?)\s+views?'
-        ]
-
-        # Find likes
-        for pattern in like_patterns:
-            match = re.search(pattern, text)
-            if match:
-                likes = match.group(1)
-                break
-
-        # Find comments
-        for pattern in comment_patterns:
-            match = re.search(pattern, text)
-            if match:
-                comments = match.group(1)
-                break
-
-        # Find shares
-        for pattern in share_patterns:
-            match = re.search(pattern, text)
-            if match:
-                shares = match.group(1)
-                break
-
-        # Find views
-        for pattern in view_patterns:
-            match = re.search(pattern, text)
-            if match:
-                views = match.group(1)
-                break
+        parsed = parse_facebook_text(body_text)
 
         return {
             "platform": "facebook",
             "url": url,
-            "likes": likes,
-            "comments": comments,
-            "shares": shares,
-            "views": views
+            "caption": parsed["caption"],
+            "likes": parsed["likes"],
+            "comments": parsed["comments"],
+            "views": parsed["views"],
+            "shares": parsed["shares"],
+            "date": parsed["date"]
         }
 
     except Exception as e:
@@ -157,8 +201,7 @@ def extract_facebook_metrics(url):
         }
 
     finally:
-        driver.quit()
-        
+        driver.quit()      
 # ======================================================
 # INSTAGRAM
 # ======================================================

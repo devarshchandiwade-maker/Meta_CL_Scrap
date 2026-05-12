@@ -1,102 +1,114 @@
-import re
-import time
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+import time
+
+import re
 
 
-def normalize_facebook_url(url):
+def parse_facebook_text(text):
 
-    reel_match = re.search(r"/reel/(\d+)", url)
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
 
-    if reel_match:
-        video_id = reel_match.group(1)
-        return f"https://www.facebook.com/watch/?v={video_id}"
+    data = {
+        "caption": None,
+        "likes": None,
+        "comments": None,
+        "views": None,
+        "date": None,
+        "duration": None
+    }
 
-    return url
+    # ====================================
+    # FIND VIDEO DURATION
+    # ====================================
 
+    duration_index = None
 
-def extract_facebook_metrics(url):
+    for i, line in enumerate(lines):
 
-    url = normalize_facebook_url(url)
+        if re.match(r"\d+:\d+\s*/\s*\d+:\d+", line):
 
-    driver = create_driver(headless=True)
+            data["duration"] = line
+            duration_index = i
+            break
 
-    try:
+    # ====================================
+    # CAPTION
+    # ====================================
 
-        driver.get(url)
+    if duration_index is not None:
 
-        time.sleep(8)
+        # caption is usually next line
+        if duration_index + 1 < len(lines):
 
-        body_text = driver.find_element(By.TAG_NAME, "body").text
-        text = body_text.lower()
+            data["caption"] = lines[duration_index + 1]
 
-        likes = "Not Found"
-        comments = "Not Found"
-        shares = "Not Found"
-        views = "Not Found"
+    # ====================================
+    # LIKES
+    # COMMENTS
+    # VIEWS
+    # ====================================
 
-        # Better regex patterns
-        like_patterns = [
-            r'([\d\.,]+[kmb]?)\s+likes?',
-            r'([\d\.,]+[kmb]?)\s+reactions?'
-        ]
+    for i, line in enumerate(lines):
 
-        comment_patterns = [
-            r'([\d\.,]+[kmb]?)\s+comments?'
-        ]
+        # likes
+        if re.match(r"^[\d.,KkMm]+$", line):
 
-        share_patterns = [
-            r'([\d\.,]+[kmb]?)\s+shares?'
-        ]
+            # next lines contain comments/views
+            nearby = " ".join(lines[i:i+6])
 
-        view_patterns = [
-            r'([\d\.,]+[kmb]?)\s+views?'
-        ]
+            if "comments" in nearby and "views" in nearby:
 
-        # Find likes
-        for pattern in like_patterns:
-            match = re.search(pattern, text)
-            if match:
-                likes = match.group(1)
+                data["likes"] = line
+
+                comments_match = re.search(
+                    r'([\d.,KkMm]+)\s+comments',
+                    nearby
+                )
+
+                views_match = re.search(
+                    r'([\d.,KkMm]+)\s+views',
+                    nearby
+                )
+
+                if comments_match:
+                    data["comments"] = comments_match.group(1)
+
+                if views_match:
+                    data["views"] = views_match.group(1)
+
                 break
 
-        # Find comments
-        for pattern in comment_patterns:
-            match = re.search(pattern, text)
+    # ====================================
+    # DATE
+    # ====================================
+
+    date_patterns = [
+        r'\d{1,2}\s+[A-Za-z]+\s+at\s+\d{1,2}:\d{2}',
+        r'[A-Za-z]+\s+\d{1,2}\s+at\s+\d{1,2}:\d{2}',
+    ]
+
+    for line in lines:
+
+        for pattern in date_patterns:
+
+            match = re.search(pattern, line)
+
             if match:
-                comments = match.group(1)
-                break
+                data["date"] = match.group(0)
+                return data
 
-        # Find shares
-        for pattern in share_patterns:
-            match = re.search(pattern, text)
-            if match:
-                shares = match.group(1)
-                break
+    return data
 
-        # Find views
-        for pattern in view_patterns:
-            match = re.search(pattern, text)
-            if match:
-                views = match.group(1)
-                break
 
-        return {
-            "platform": "facebook",
-            "url": url,
-            "likes": likes,
-            "comments": comments,
-            "shares": shares,
-            "views": views
-        }
+# ====================================
+# TEST
+# ====================================
 
-    except Exception as e:
+with open("facebook_text.txt", "r", encoding="utf-8") as f:
+    text = f.read()
 
-        return {
-            "platform": "facebook",
-            "error": str(e)
-        }
+result = parse_facebook_text(text)
 
-    finally:
-        driver.quit()
-
-print(extract_facebook_metrics("https://www.facebook.com/reel/24928252270187147"))
+print(result)
