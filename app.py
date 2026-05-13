@@ -316,8 +316,8 @@ def extract_instagram_metrics(url):
             "likes": likes,
             "comments": comments,
             "views": views,
-            "date": post_date,
-            "datetime": iso_date
+            "datetime": post_date,
+            "date": iso_date
         }
 
     except Exception as e:
