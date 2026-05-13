@@ -257,8 +257,19 @@ def extract_facebook_metrics(url):
 # INSTAGRAM
 # ======================================================
 
-def extract_instagram_metrics(url):
+def normalize_instagram_url(url):
 
+    match = re.search(r"instagram\.com/.*/reel/([A-Za-z0-9_-]+)/?", url)
+
+    if match:
+        reel_id = match.group(1)
+        return f"https://www.instagram.com/reel/{reel_id}/"
+
+    return url
+
+def extract_instagram_metrics(url):
+    
+    url = normalize_instagram_url(url)
     driver = create_driver(headless=True)
 
     try:
