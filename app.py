@@ -181,6 +181,23 @@ def parse_facebook_text(text):
     # DATE
     # ====================================
 
+    date_patterns = [
+        r'\d{1,2}\s+[A-Za-z]+\s+at\s+\d{1,2}:\d{2}',
+        r'[A-Za-z]+\s+\d{1,2}\s+at\s+\d{1,2}:\d{2}',
+    ]
+
+    for line in lines:
+
+        for pattern in date_patterns:
+
+            match = re.search(pattern, line)
+
+            if match:
+                data["date"] = match.group(0)
+                return data
+
+    return data
+
 
 def extract_facebook_metrics(url):
 
@@ -195,6 +212,10 @@ def extract_facebook_metrics(url):
         driver.get(url)
 
         time.sleep(8)
+
+        body_text = driver.find_element(By.TAG_NAME, "body").text
+
+        parsed = parse_facebook_text(body_text)
 
 
         post_date = None
@@ -231,10 +252,6 @@ def extract_facebook_metrics(url):
 
         except Exception:
             post_date = None
-
-        body_text = driver.find_element(By.TAG_NAME, "body").text
-
-        parsed = parse_facebook_text(body_text)
 
         return {
             "platform": "facebook",
