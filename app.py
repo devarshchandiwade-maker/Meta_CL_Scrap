@@ -238,82 +238,97 @@ def extract_facebook_metrics(url):
 # INSTAGRAM
 # ======================================================
 
-def format_date(upload_date):
-    try:
-        return datetime.strptime(upload_date, "%Y%m%d").strftime("%Y-%m-%d")
-    except:
-        return upload_date
-
 def extract_instagram_metrics(url):
 
-    ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-    }
+    driver = create_driver(headless=True)
 
     try:
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+        driver.get(url)
+
+        wait = WebDriverWait(driver, 20)
+        time.sleep(5)
+
+        # =========================
+        # LIKES + COMMENTS (your Selenium logic style)
+        # =========================
+        likes = None
+        comments = None
+
+        try:
+            wait.until(
+                EC.presence_of_all_elements_located(
+                    (By.CLASS_NAME, "xe9ewy2")
+                )
+            )
+
+            elements = driver.find_elements(By.CLASS_NAME, "xe9ewy2")
+
+            values = []
+
+            for el in elements:
+                text = el.text.strip()
+                if text:
+                    values.append(text)
+
+            likes = values[0] if len(values) > 0 else None
+            comments = values[1] if len(values) > 1 else None
+
+        except:
+            pass
+
+        # =========================
+        # DATE (your original logic)
+        # =========================
+        post_date = None
+        iso_date = None
+        caption = None
+
+        try:
+            time_element = driver.find_element(By.TAG_NAME, "time")
+            post_date = time_element.text.strip()
+            iso_date = time_element.get_attribute("datetime")
+
+            caption_element = driver.find_element(By.CLASS_NAME, "x126k92a")
+            caption = caption_element.text.strip()
+
+        except:
+            pass
+
+        # =========================
+        # VIEWS (Reels)
+        # =========================
+        views = None
+
+        try:
+            body_text = driver.find_element(By.TAG_NAME, "body").text
+
+            match = re.search(r"([\d.,KMkm]+)\s+views", body_text)
+            if match:
+                views = match.group(1)
+
+        except:
+            pass
 
         return {
-            "platform": info.get("extractor"),
-            # 🔥 FIXED DATE FORMAT
-            "views": (
-                info.get("view_count")
-                or info.get("play_count")
-                or info.get("video_view_count")
-            ),
-            "likes": info.get("like_count"),
-            "comments": info.get("comment_count"),
-            "caption": info.get("description"),
-            "date": format_date(info.get("upload_date")),
-            "url": url
+            "platform": "instagram",
+            "url": url,
+            "caption": caption,
+            "likes": likes,
+            "comments": comments,
+            "views": views,
+            "date": post_date,
+            "datetime": iso_date
         }
 
     except Exception as e:
         return {
+            "platform": "instagram",
             "error": str(e),
             "url": url
         }
 
-    # try:
-
-    #     shortcode = extract_shortcode(url)
-
-    #     if not shortcode:
-
-    #         return {
-    #             "platform": "instagram",
-    #             "error": "Invalid Instagram URL"
-    #         }
-
-    #     # INIT INSTALOADER
-    #     L = instaloader.Instaloader()
-
-    #     # GET POST
-    #     post = instaloader.Post.from_shortcode(
-    #         L.context,
-    #         shortcode
-    #     )
-
-    #     return {
-    #         "platform": "instagram",
-    #         "shortcode": shortcode,
-    #         "views": post.video_view_count,
-    #         "likes": post.likes,
-    #         "comments": post.comments,
-    #         "caption": post.caption,
-    #         "date": post.date
-    #     }
-
-    # except Exception as e:
-
-    #     return {
-    #         "platform": "instagram",
-    #         "error": str(e)
-    #     }
-
+    finally:
+        driver.quit()
 # ======================================================
 # AUTO DETECT
 # ======================================================
