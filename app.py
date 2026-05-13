@@ -182,21 +182,32 @@ def parse_facebook_text(text):
     # ====================================
 
     date_patterns = [
-        r'\d{1,2}\s+[A-Za-z]+\s+at\s+\d{1,2}:\d{2}',
-        r'[A-Za-z]+\s+\d{1,2}\s+at\s+\d{1,2}:\d{2}',
+        r'\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?',   # January 1 / January 1 2025
+        r'[A-Za-z]+\s+\d{1,2}(?:,\s*\d{4})?',  # March 3, 2025
+        r'\d{1,2}[smhdw]',                     # 1d, 18h, 33w
     ]
 
-    for line in lines:
+    def is_valid_date(text):
+        text = text.strip()
+        return any(re.fullmatch(p, text) for p in date_patterns)
 
-        for pattern in date_patterns:
 
-            match = re.search(pattern, line)
+    start_index = 0
 
-            if match:
-                data["date"] = match.group(0)
-                return data
+    # 1. Prefer searching AFTER "views"
+    for i, line in enumerate(lines):
+        if "views" in line.lower():
+            start_index = i
+            break
 
-    return data
+    # 2. Search forward
+    for line in lines[start_index:]:
+        clean = line.strip()
+
+        if is_valid_date(clean):
+            data["date"] = clean
+            break
+        return data
 
 
 def extract_facebook_metrics(url):
