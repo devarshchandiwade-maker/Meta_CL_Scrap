@@ -181,23 +181,6 @@ def parse_facebook_text(text):
     # DATE
     # ====================================
 
-    date_patterns = [
-        r'\d{1,2}\s+[A-Za-z]+\s+at\s+\d{1,2}:\d{2}',
-        r'[A-Za-z]+\s+\d{1,2}\s+at\s+\d{1,2}:\d{2}',
-    ]
-
-    for line in lines:
-
-        for pattern in date_patterns:
-
-            match = re.search(pattern, line)
-
-            if match:
-                data["date"] = match.group(0)
-                return data
-
-    return data
-
 
 def extract_facebook_metrics(url):
 
@@ -213,30 +196,41 @@ def extract_facebook_metrics(url):
 
         time.sleep(8)
 
-        # =========================
-        # HOVER DATE EXTRACTION
-        # =========================
 
-        hover_date = None
+        post_date = None
 
         try:
-            # find the "1d / 2d / 3h" element (your anchor tag)
-            time_element = driver.find_element(By.XPATH, "//a[@aria-label]")
-
-            actions = ActionChains(driver)
-            actions.move_to_element(time_element).perform()
-
-            # wait for tooltip to appear (Facebook injects it dynamically)
-            tooltip = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located(
-                    (By.XPATH, "//*[@role='tooltip' or contains(@class,'tooltip')]")
-                )
+            # wait for page to load links
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.TAG_NAME, "a"))
             )
 
-            hover_date = tooltip.text
+            links = driver.find_elements(By.TAG_NAME, "a")
+
+            for link in links:
+
+                href = link.get_attribute("href")
+                aria = link.get_attribute("aria-label")
+
+                if not href or not aria:
+                    continue
+
+                # normalize both URLs for matching
+                if "/reel/" in href and "/reel/" in url:
+
+                    # match reel id
+                    import re
+
+                    def get_id(u):
+                        m = re.search(r"/reel/(\d+)", u)
+                        return m.group(1) if m else None
+
+                    if get_id(href) == get_id(url):
+                        post_date = aria
+                        break
 
         except Exception:
-            hover_date = None
+            post_date = None
 
         body_text = driver.find_element(By.TAG_NAME, "body").text
 
@@ -250,7 +244,7 @@ def extract_facebook_metrics(url):
             "comments": parsed["comments"],
             "views": parsed["views"],
             "shares": parsed["shares"],
-            "date": hover_date
+            "date": post_date
         }
 
     except Exception as e:
