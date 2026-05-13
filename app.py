@@ -12,6 +12,8 @@ import time
 import instaloader
 import re
 
+from yt_dlp import YoutubeDL
+from datetime import datetime
 
 # ======================================================
 # FLASK APP
@@ -236,52 +238,45 @@ def extract_facebook_metrics(url):
 # INSTAGRAM
 # ======================================================
 
-def extract_shortcode(url):
-
-    shortcode = url.strip("/").split("/")[-1]
-    if len(shortcode) == 0:
-        return None
-    return shortcode
-
+def format_date(upload_date):
+    try:
+        return datetime.strptime(upload_date, "%Y%m%d").strftime("%Y-%m-%d")
+    except:
+        return upload_date
 
 def extract_instagram_metrics(url):
 
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+    }
+
     try:
-
-        shortcode = extract_shortcode(url)
-
-        if not shortcode:
-
-            return {
-                "platform": "instagram",
-                "error": "Invalid Instagram URL"
-            }
-
-        # INIT INSTALOADER
-        L = instaloader.Instaloader()
-
-        # GET POST
-        post = instaloader.Post.from_shortcode(
-            L.context,
-            shortcode
-        )
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
 
         return {
-            "platform": "instagram",
-            "shortcode": shortcode,
-            "views": post.video_view_count,
-            "likes": post.likes,
-            "comments": post.comments,
-            "caption": post.caption,
-            "date": post.date
+            "platform": info.get("extractor"),
+            # 🔥 FIXED DATE FORMAT
+            "view_count": (
+                info.get("view_count")
+                or info.get("play_count")
+                or info.get("video_view_count")
+            ),
+            "like_count": info.get("like_count"),
+            "comment_count": info.get("comment_count"),
+            "description": info.get("description"),
+            "date": format_date(info.get("upload_date")),
+            "url": url
         }
 
     except Exception as e:
-
         return {
-            "platform": "instagram",
-            "error": str(e)
+            "error": str(e),
+            "url": url
         }
+
 
 # ======================================================
 # AUTO DETECT
