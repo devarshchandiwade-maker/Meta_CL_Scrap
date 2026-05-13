@@ -220,6 +220,7 @@ def extract_facebook_metrics(url):
         
 
         return {
+            "all_text": body_text,
             "platform": "facebook",
             "url": url,
             "caption": parsed["caption"],
