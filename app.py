@@ -214,44 +214,10 @@ def extract_facebook_metrics(url):
         time.sleep(8)
 
         body_text = driver.find_element(By.TAG_NAME, "body").text
+        print(body_text)
 
         parsed = parse_facebook_text(body_text)
-
-
-        post_date = None
-
-        try:
-            # wait for page to load links
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.TAG_NAME, "a"))
-            )
-
-            links = driver.find_elements(By.TAG_NAME, "a")
-
-            for link in links:
-
-                href = link.get_attribute("href")
-                aria = link.get_attribute("aria-label")
-
-                if not href or not aria:
-                    continue
-
-                # normalize both URLs for matching
-                if "/reel/" in href and "/reel/" in url:
-
-                    # match reel id
-                    import re
-
-                    def get_id(u):
-                        m = re.search(r"/reel/(\d+)", u)
-                        return m.group(1) if m else None
-
-                    if get_id(href) == get_id(url):
-                        post_date = aria
-                        break
-
-        except Exception:
-            post_date = None
+        
 
         return {
             "platform": "facebook",
@@ -261,7 +227,7 @@ def extract_facebook_metrics(url):
             "comments": parsed["comments"],
             "views": parsed["views"],
             "shares": parsed["shares"],
-            "date": post_date
+            "date": parsed["date"]
         }
 
     except Exception as e:
