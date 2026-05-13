@@ -185,6 +185,7 @@ def parse_facebook_text(text):
     date_patterns = [
         r'\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?',   # January 1 / January 1 2025
         r'[A-Za-z]+\s+\d{1,2}(?:,\s*\d{4})?',  # March 3, 2025
+        r'[A-Za-z]+\s+\d{1,2}\s+at\s+\d{1,2}:\d{2}\s*[APMapm]{2}',
         r'\d{1,2}[smhdw]',                     # 1d, 18h, 33w
     ]
 
@@ -207,7 +208,7 @@ def parse_facebook_text(text):
         if is_valid_date(clean):
             data["date"] = clean
             break
-            
+
     return data
 
 
