@@ -7,6 +7,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 
 import time
 import instaloader
@@ -200,6 +201,8 @@ def parse_facebook_text(text):
 
 def extract_facebook_metrics(url):
 
+
+
     url = normalize_facebook_url(url)
 
     driver = create_driver(headless=True)
@@ -209,6 +212,31 @@ def extract_facebook_metrics(url):
         driver.get(url)
 
         time.sleep(8)
+
+        # =========================
+        # HOVER DATE EXTRACTION
+        # =========================
+
+        hover_date = None
+
+        try:
+            # find the "1d / 2d / 3h" element (your anchor tag)
+            time_element = driver.find_element(By.XPATH, "//a[@aria-label]")
+
+            actions = ActionChains(driver)
+            actions.move_to_element(time_element).perform()
+
+            # wait for tooltip to appear (Facebook injects it dynamically)
+            tooltip = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, "//*[@role='tooltip' or contains(@class,'tooltip')]")
+                )
+            )
+
+            hover_date = tooltip.text
+
+        except Exception:
+            hover_date = None
 
         body_text = driver.find_element(By.TAG_NAME, "body").text
 
@@ -222,7 +250,7 @@ def extract_facebook_metrics(url):
             "comments": parsed["comments"],
             "views": parsed["views"],
             "shares": parsed["shares"],
-            "date": parsed["date"]
+            "date": hover_date
         }
 
     except Exception as e:
