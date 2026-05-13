@@ -259,14 +259,14 @@ def extract_instagram_metrics(url):
         return {
             "platform": info.get("extractor"),
             # 🔥 FIXED DATE FORMAT
-            "view_count": (
+            "views": (
                 info.get("view_count")
                 or info.get("play_count")
                 or info.get("video_view_count")
             ),
-            "like_count": info.get("like_count"),
-            "comment_count": info.get("comment_count"),
-            "description": info.get("description"),
+            "likes": info.get("like_count"),
+            "comments": info.get("comment_count"),
+            "caption": info.get("description"),
             "date": format_date(info.get("upload_date")),
             "url": url
         }
@@ -277,6 +277,42 @@ def extract_instagram_metrics(url):
             "url": url
         }
 
+    # try:
+
+    #     shortcode = extract_shortcode(url)
+
+    #     if not shortcode:
+
+    #         return {
+    #             "platform": "instagram",
+    #             "error": "Invalid Instagram URL"
+    #         }
+
+    #     # INIT INSTALOADER
+    #     L = instaloader.Instaloader()
+
+    #     # GET POST
+    #     post = instaloader.Post.from_shortcode(
+    #         L.context,
+    #         shortcode
+    #     )
+
+    #     return {
+    #         "platform": "instagram",
+    #         "shortcode": shortcode,
+    #         "views": post.video_view_count,
+    #         "likes": post.likes,
+    #         "comments": post.comments,
+    #         "caption": post.caption,
+    #         "date": post.date
+    #     }
+
+    # except Exception as e:
+
+    #     return {
+    #         "platform": "instagram",
+    #         "error": str(e)
+    #     }
 
 # ======================================================
 # AUTO DETECT
