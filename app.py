@@ -181,34 +181,43 @@ def parse_facebook_text(text):
     # DATE
     # ====================================
 
-        
     date_patterns = [
-        r'\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?',   # January 1 / January 1 2025
-        r'[A-Za-z]+\s+\d{1,2}(?:,\s*\d{4})?',  # March 3, 2025
-        r'[A-Za-z]+\s+\d{1,2}\s+at\s+\d{1,2}:\d{2}\s*[APMapm]{2}',
-        r'\d{1,2}[smhdw]',                     # 1d, 18h, 33w
+
+        # April 15 at 4:30 PM
+        r'^[A-Za-z]+\s+\d{1,2}\s+at\s+\d{1,2}:\d{2}\s*[APMapm]{2}$',
+
+        # April 15, 2025
+        r'^[A-Za-z]+\s+\d{1,2},\s*\d{4}$',
+
+        # April 15
+        r'^[A-Za-z]+\s+\d{1,2}$',
+
+        # 1d / 18h / 2w
+        r'^\d{1,2}[smhdw]$',
     ]
 
     def is_valid_date(text):
-        text = text.strip()
-        return any(re.fullmatch(p, text) for p in date_patterns)
 
-    start_index = 0
+        text = (
+            text.strip()
+            .replace("\u202f", " ")
+            .replace("\u00a0", " ")
+        )
 
-    # 1. find "views"
-    for i, line in enumerate(lines):
-        if "views" in line.lower():
-            start_index = i
-            break
+        return any(
+            re.fullmatch(pattern, text)
+            for pattern in date_patterns
+        )
 
-    # 2. search AFTER views
-    for line in lines[start_index:]:
+    # Search all lines
+    for line in lines:
+
         clean = line.strip()
 
         if is_valid_date(clean):
+
             data["date"] = clean
             break
-
     return data
 
 
